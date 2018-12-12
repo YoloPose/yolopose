@@ -6,15 +6,17 @@ import sys
 
 
 class YOLO_TF:
+    imshow = True
     disp_console = True
     weights_file = 'weights/YOLO_small.ckpt'
     alpha = 0.1
     threshold = 0.2
     iou_threshold = 0.5
-    num_class = 1
+    num_class = 20
     num_box = 2
     grid_size = 7
-    classes = ["person"]
+    classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+               "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
     w_img = 640
     h_img = 480
@@ -22,10 +24,14 @@ class YOLO_TF:
     def __init__(self, argvs=[]):
         self.argv_parser(argvs)
         self.build_networks()
-        if self.fromfile is not None: self.detect_from_file(self.fromfile)
 
     def argv_parser(self, argvs):
         for i in range(1, len(argvs), 2):
+            if argvs[i] == '-imshow':
+                if argvs[i + 1] == '1':
+                    self.imshow = True
+                else:
+                    self.imshow = False
             if argvs[i] == '-disp_console':
                 if argvs[i + 1] == '1':
                     self.disp_console = True
@@ -184,8 +190,6 @@ class YOLO_TF:
 
     def show_results(self, img, results):
         img_cp = img.copy()
-        if self.filewrite_txt:
-            ftxt = open(self.tofile_txt, 'w')
         for i in range(len(results)):
             x = int(results[i][1])
             y = int(results[i][2])
@@ -194,23 +198,14 @@ class YOLO_TF:
             if self.disp_console: print(
                 '    class : ' + results[i][0] + ' , [x,y,w,h]=[' + str(x) + ',' + str(y) + ',' + str(
                     int(results[i][3])) + ',' + str(int(results[i][4])) + '], Confidence = ' + str(results[i][5]))
-            if self.filewrite_img or self.imshow:
+            if self.imshow:
                 cv2.rectangle(img_cp, (x - w, y - h), (x + w, y + h), (0, 255, 0), 2)
                 cv2.rectangle(img_cp, (x - w, y - h - 20), (x + w, y - h), (125, 125, 125), -1)
                 cv2.putText(img_cp, results[i][0] + ' : %.2f' % results[i][5], (x - w + 5, y - h - 7),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-            if self.filewrite_txt:
-                ftxt.write(results[i][0] + ',' + str(x) + ',' + str(y) + ',' + str(w) + ',' + str(h) + ',' + str(
-                    results[i][5]) + '\n')
-        if self.filewrite_img:
-            if self.disp_console: print('    image file writed : ' + self.tofile_img)
-            cv2.imwrite(self.tofile_img, img_cp)
         if self.imshow:
             cv2.imshow('YOLO_small detection', img_cp)
             cv2.waitKey(1)
-        if self.filewrite_txt:
-            if self.disp_console: print('    txt file writed : ' + self.tofile_txt)
-            ftxt.close()
 
     def iou(self, box1, box2):
         tb = min(box1[0] + 0.5 * box1[2], box2[0] + 0.5 * box2[2]) - max(box1[0] - 0.5 * box1[2],
@@ -223,13 +218,15 @@ class YOLO_TF:
             intersection = tb * lr
         return intersection / (box1[2] * box1[3] + box2[2] * box2[3] - intersection)
 
-    def training(self):  # TODO add training function!
-        return None
-
 
 def main(argvs):
     yolo = YOLO_TF(argvs)
-    cv2.waitKey(1000)
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret,mat = cap.read()
+        result = yolo.detect_from_cvmat(mat)
+        cv2.waitKey(1)
+    print(result)
 
 
 if __name__ == '__main__':
